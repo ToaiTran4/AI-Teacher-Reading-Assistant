@@ -1,0 +1,40 @@
+name: rag_chat_app
+description: RAG Chat Application with PDF support
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Managementmongosh mongodb://localhost:27017
+  provider: ^6.1.1
+  
+  # HTTP & API
+  http: ^1.1.2
+  
+  # MongoDB (replacing Firebase for storage/metadata)
+  mongo_dart: any
+  path: any
+  
+  # PDF Processing
+  file_picker: ^8.0.0
+  syncfusion_flutter_pdf: ^24.2.9
+  syncfusion_flutter_pdfviewer: ^24.2.9
+  
+  # Local storage
+  shared_preferences: ^2.3.2
+  
+  # Utils
+  uuid: ^4.3.3
+  
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true

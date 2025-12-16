@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "779602864472",
+    "project_id": "teachain-49009",
+    "storage_bucket": "teachain-49009.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:779602864472:android:42391d76dd361222ee9d2d",
+        "android_client_info": {
+          "package_name": "com.example.week2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlt0RrWszITGY2a4tKhrFi3TJZr_V50wY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
