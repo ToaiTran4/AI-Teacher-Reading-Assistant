@@ -8,6 +8,7 @@ class DocumentModel {
   final bool isProcessed; // Đã xử lý và đưa vào Qdrant chưa
   final String? qdrantCollectionId; // Collection ID trong Qdrant
   final int? vectorCount; // Số lượng vectors đã tạo
+  final bool isCompleted; // [NEW] Đánh dấu đã đọc xong
 
   DocumentModel({
     required this.id,
@@ -19,6 +20,7 @@ class DocumentModel {
     this.isProcessed = false,
     this.qdrantCollectionId,
     this.vectorCount,
+    this.isCompleted = false, // [NEW] Default false
   });
 
   Map<String, dynamic> toMap() {
@@ -32,6 +34,7 @@ class DocumentModel {
       'isProcessed': isProcessed,
       'qdrantCollectionId': qdrantCollectionId,
       'vectorCount': vectorCount,
+      'isCompleted': isCompleted, // [NEW]
     };
   }
 
@@ -46,6 +49,7 @@ class DocumentModel {
       isProcessed: map['isProcessed'] ?? false,
       qdrantCollectionId: map['qdrantCollectionId'],
       vectorCount: map['vectorCount'],
+      isCompleted: map['isCompleted'] ?? false, // [NEW]
     );
   }
 
@@ -59,6 +63,7 @@ class DocumentModel {
     bool? isProcessed,
     String? qdrantCollectionId,
     int? vectorCount,
+    bool? isCompleted, // [NEW]
   }) {
     return DocumentModel(
       id: id ?? this.id,
@@ -70,6 +75,7 @@ class DocumentModel {
       isProcessed: isProcessed ?? this.isProcessed,
       qdrantCollectionId: qdrantCollectionId ?? this.qdrantCollectionId,
       vectorCount: vectorCount ?? this.vectorCount,
+      isCompleted: isCompleted ?? this.isCompleted, // [NEW]
     );
   }
 }

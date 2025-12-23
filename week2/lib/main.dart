@@ -12,7 +12,7 @@ import 'screens/home_screen.dart';
 // ===== CẤU HÌNH =====
 // Thay bằng API key của Google Gemini (Generative Language API).
 // Ví dụ: const String geminiApiKey = "AIza...";
-const String geminiApiKey = "AIzaSyAQiVYf1ZxNxDYZ7-SY8bgROq6df8A0Zhc";
+const String geminiApiKey = "";
 const String qdrantUrl = "http://localhost:6333";
 
 void main() async {
@@ -29,10 +29,7 @@ class MyApp extends StatelessWidget {
     final chatService = ChatService(apiKey: geminiApiKey);
 
     // Qdrant local
-    final qdrantService = QdrantService(
-      baseUrl: qdrantUrl,
-      apiKey: null,
-    );
+    final qdrantService = QdrantService(baseUrl: qdrantUrl, apiKey: null);
 
     // Ollama service (chỉ dùng cho embedding)
     final ollamaService = OllamaService();
@@ -59,10 +56,7 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.blue,
           useMaterial3: true,
-          appBarTheme: const AppBarTheme(
-            centerTitle: true,
-            elevation: 2,
-          ),
+          appBarTheme: const AppBarTheme(centerTitle: true, elevation: 2),
         ),
         home: const AuthWrapper(),
       ),
@@ -78,9 +72,7 @@ class AuthWrapper extends StatelessWidget {
     final authController = context.watch<AuthController>();
 
     if (authController.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return authController.isAuthenticated

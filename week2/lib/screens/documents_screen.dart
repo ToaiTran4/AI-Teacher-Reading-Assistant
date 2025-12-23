@@ -216,14 +216,20 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     }
   }
 
-  void _selectDocument(DocumentModel document) {
+// Tìm hàm _selectDocument và sửa lại thành async
+  Future<void> _selectDocument(DocumentModel document) async {
     if (!mounted) return;
     final chatController = context.read<ChatController>();
-    chatController.selectDocument(document);
+
+    // Đợi tải lịch sử xong
+    await chatController.selectDocument(document);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đã chọn: ${document.fileName}')),
+        SnackBar(
+          content: Text('Đã chọn: ${document.fileName}'),
+          duration: const Duration(seconds: 1),
+        ),
       );
     }
   }
