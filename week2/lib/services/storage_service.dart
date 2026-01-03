@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:mongo_dart/mongo_dart.dart';
 import 'package:uuid/uuid.dart';
 import '../models/document_model.dart';
+import '../config.dart';
 
 /// Universal Storage Service với GridFS
 /// - Web: Upload qua REST API
@@ -20,9 +21,10 @@ class StorageService {
   bool _isInitialized = false;
 
   StorageService({
-    this.apiUrl = 'http://localhost:3000/api',
-    this.mongoUri = 'mongodb://localhost:27017/Teachain',
-  });
+    String? apiUrl,
+    String? mongoUri,
+  })  : apiUrl = apiUrl ?? AppConfig.getApiUrl(),
+        mongoUri = mongoUri ?? AppConfig.getMongoUri();
 
   Future<void> init() async {
     if (_isInitialized) return;

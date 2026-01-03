@@ -8,12 +8,12 @@ import 'services/rag_service.dart';
 import 'services/qdrant_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'config.dart';
 
 // ===== CẤU HÌNH =====
 // Thay bằng API key của Google Gemini (Generative Language API).
 // Ví dụ: const String geminiApiKey = "AIza...";
-const String geminiApiKey = "AIzaSyAQiVYf1ZxNxDYZ7-SY8bgROq6df8A0Zhc";
-const String qdrantUrl = "http://localhost:6333";
+const String geminiApiKey = "";
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,14 +28,14 @@ class MyApp extends StatelessWidget {
     // Chat dùng Google Gemini
     final chatService = ChatService(apiKey: geminiApiKey);
 
-    // Qdrant local
+    // Qdrant local (tự động detect platform)
     final qdrantService = QdrantService(
-      baseUrl: qdrantUrl,
+      baseUrl: AppConfig.getQdrantUrl(),
       apiKey: null,
     );
 
-    // Ollama service (chỉ dùng cho embedding)
-    final ollamaService = OllamaService();
+    // Ollama service (chỉ dùng cho embedding, tự động detect platform)
+    final ollamaService = OllamaService(baseUrl: AppConfig.getOllamaUrl());
 
     // RAG dùng Ollama embedding
     final ragService = RAGService(
@@ -59,10 +59,7 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           primarySwatch: Colors.blue,
           useMaterial3: true,
-          appBarTheme: const AppBarTheme(
-            centerTitle: true,
-            elevation: 2,
-          ),
+          appBarTheme: const AppBarTheme(centerTitle: true, elevation: 2),
         ),
         home: const AuthWrapper(),
       ),
@@ -78,9 +75,7 @@ class AuthWrapper extends StatelessWidget {
     final authController = context.watch<AuthController>();
 
     if (authController.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return authController.isAuthenticated

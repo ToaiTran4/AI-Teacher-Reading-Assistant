@@ -22,8 +22,8 @@ dependencies:
   
   # PDF Processing
   file_picker: ^8.0.0
-  syncfusion_flutter_pdf: ^24.2.9
-  syncfusion_flutter_pdfviewer: ^24.2.9
+  syncfusion_flutter_pdf: ^27.1.47
+  syncfusion_flutter_pdfviewer: ^27.1.47
   
   # Local storage
   shared_preferences: ^2.3.2

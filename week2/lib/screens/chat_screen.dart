@@ -20,6 +20,15 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  @override
+  void initState() {
+    super.initState();
+    // Tự động cuộn xuống cuối khi mở màn hình chat
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+    });
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -56,7 +65,8 @@ class _ChatScreenState extends State<ChatScreen> {
             if (selectedDoc != null)
               Text(
                 selectedDoc.fileName,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+                style: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.normal),
               ),
           ],
         ),
@@ -97,7 +107,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
+                        const Icon(Icons.chat_bubble_outline,
+                            size: 64, color: Colors.grey),
                         const SizedBox(height: 16),
                         const Text(
                           'Bắt đầu trò chuyện',
@@ -107,7 +118,8 @@ class _ChatScreenState extends State<ChatScreen> {
                           const SizedBox(height: 8),
                           Text(
                             'Hỏi về: ${selectedDoc.fileName}',
-                            style: const TextStyle(fontSize: 14, color: Colors.grey),
+                            style: const TextStyle(
+                                fontSize: 14, color: Colors.grey),
                           ),
                         ],
                       ],
@@ -122,13 +134,16 @@ class _ChatScreenState extends State<ChatScreen> {
                       final isUser = msg.role == "user";
 
                       return Align(
-                        alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                        alignment: isUser
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
                         child: Container(
                           constraints: BoxConstraints(
                             maxWidth: MediaQuery.of(context).size.width * 0.75,
                           ),
                           margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
                             color: isUser
                                 ? Colors.blue
@@ -206,7 +221,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
                     ),
                     maxLines: null,
                     onSubmitted: (_) => _sendMessage(),
