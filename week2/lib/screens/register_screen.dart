@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
+import '../theme/app_theme.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -41,11 +42,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (error != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(error),
+          backgroundColor: AppTheme.errorColor,
+        ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đăng ký thành công!')),
+        SnackBar(
+          content: const Text('Đăng ký thành công!'),
+          backgroundColor: AppTheme.successColor,
+        ),
       );
       Navigator.pop(context);
     }
@@ -71,29 +78,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   Icon(
                     Icons.person_add,
                     size: 80,
-                    color: Theme.of(context).primaryColor,
+                    color: AppTheme.primaryColor,
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: AppTheme.spacingXL),
                   TextFormField(
                     controller: _nameController,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'Tên hiển thị',
-                      prefixIcon: const Icon(Icons.person),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      prefixIcon: Icon(Icons.person),
                     ),
                     validator: (v) => v?.isEmpty ?? true ? 'Nhập tên' : null,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppTheme.spacingMD),
                   TextFormField(
                     controller: _emailController,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'Email',
-                      prefixIcon: const Icon(Icons.email),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                      prefixIcon: Icon(Icons.email),
                     ),
                     keyboardType: TextInputType.emailAddress,
                     validator: (v) {
@@ -102,7 +103,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppTheme.spacingMD),
                   TextFormField(
                     controller: _passwordController,
                     decoration: InputDecoration(
@@ -116,9 +117,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           setState(() => _obscurePassword = !_obscurePassword);
                         },
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
                     ),
                     obscureText: _obscurePassword,
                     validator: (v) {
@@ -127,7 +125,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppTheme.spacingMD),
                   TextFormField(
                     controller: _confirmPasswordController,
                     decoration: InputDecoration(
@@ -141,9 +139,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
                         },
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
                     ),
                     obscureText: _obscureConfirmPassword,
                     validator: (v) {
@@ -154,21 +149,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppTheme.spacingLG),
                   authController.isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : ElevatedButton(
                           onPressed: _register,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text(
-                            'Đăng ký',
-                            style: TextStyle(fontSize: 16),
-                          ),
+                          style: AppTheme.primaryButtonStyle,
+                          child: const Text('Đăng ký'),
                         ),
                 ],
               ),

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/auth_controller.dart';
+import '../theme/app_theme.dart';
 import 'chat_screen.dart';
 import 'documents_screen.dart';
 import 'login_screen.dart';
+import 'profile_screen.dart'; // <--- MỚI: Import màn hình Profile
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,9 +17,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
+  // Danh sách các màn hình chính
   final List<Widget> _screens = [
-    const ChatScreen(),
-    const DocumentsScreen(),
+    const ChatScreen(), // Index 0
+    const DocumentsScreen(), // Index 1
+    const ProfileScreen(), // Index 2: Màn hình Hồ sơ & Đăng xuất
   ];
 
   void _onItemTapped(int index) {
@@ -26,19 +30,26 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  // Hàm đăng xuất (Vẫn giữ lại để dùng cho Drawer nếu cần)
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Đăng xuất'),
-        content: const Text('Bạn có chắc muốn đăng xuất?'),
+        backgroundColor: AppTheme.surfaceColor,
+        title: Text('Đăng xuất', style: AppTheme.h3),
+        content:
+            Text('Bạn có chắc muốn đăng xuất?', style: AppTheme.bodyMedium),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy'),
+            child: Text('Hủy',
+                style: AppTheme.bodyMedium
+                    .copyWith(color: AppTheme.textSecondary)),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
+            style:
+                ElevatedButton.styleFrom(backgroundColor: AppTheme.errorColor),
             child: const Text('Đăng xuất'),
           ),
         ],
@@ -46,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (confirm == true) {
+      if (!mounted) return;
       await context.read<AuthController>().logout();
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
@@ -60,45 +72,91 @@ class _HomeScreenState extends State<HomeScreen> {
     final user = authController.currentUser;
 
     return Scaffold(
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat),
-            label: 'Chat',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.folder),
-            label: 'Documents',
-          ),
-        ],
+      // SỬ DỤNG INDEXED STACK: Giữ trạng thái các trang khi chuyển tab
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _screens,
       ),
+
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          selectedItemColor: AppTheme.primaryColor,
+          unselectedItemColor: AppTheme.textSecondary,
+          selectedLabelStyle:
+              AppTheme.bodySmall.copyWith(fontWeight: FontWeight.w600),
+          unselectedLabelStyle: AppTheme.bodySmall,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble_outline),
+              activeIcon: Icon(Icons.chat_bubble),
+              label: 'Chat',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.folder_outlined),
+              activeIcon: Icon(Icons.folder),
+              label: 'Documents',
+            ),
+            // <--- MỚI: Thêm Tab User vào đây
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
+              label: 'Hồ sơ',
+            ),
+          ],
+        ),
+      ),
+
+      // Giữ nguyên Drawer cũ (nếu bạn muốn xóa Drawer để dùng hẳn Tab User thì cứ xóa phần này đi)
       drawer: Drawer(
+        backgroundColor: AppTheme.surfaceColor,
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             UserAccountsDrawerHeader(
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
+              decoration: const BoxDecoration(color: AppTheme.primaryColor),
+              accountName: Text(
+                user?.displayName ?? 'User',
+                style: AppTheme.bodyLarge.copyWith(
+                    color: AppTheme.textOnPrimary, fontWeight: FontWeight.w600),
               ),
-              accountName: Text(user?.displayName ?? 'User'),
-              accountEmail: Text(user?.email ?? ''),
+              accountEmail: Text(
+                user?.email ?? '',
+                style: AppTheme.bodyMedium
+                    .copyWith(color: AppTheme.textOnPrimary.withOpacity(0.9)),
+              ),
               currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
+                backgroundColor: AppTheme.backgroundColor,
                 child: Text(
                   user?.displayName.substring(0, 1).toUpperCase() ?? 'U',
-                  style: TextStyle(
-                    fontSize: 32,
-                    color: Theme.of(context).primaryColor,
-                  ),
+                  style: AppTheme.h3.copyWith(color: AppTheme.primaryColor),
                 ),
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.chat),
-              title: const Text('Chat'),
+              leading: Icon(Icons.chat_bubble_outline,
+                  color: _selectedIndex == 0
+                      ? AppTheme.primaryColor
+                      : AppTheme.textSecondary),
+              title: Text('Chat',
+                  style: AppTheme.bodyMedium.copyWith(
+                      color: _selectedIndex == 0
+                          ? AppTheme.primaryColor
+                          : AppTheme.textPrimary)),
               selected: _selectedIndex == 0,
               onTap: () {
                 _onItemTapped(0);
@@ -106,32 +164,43 @@ class _HomeScreenState extends State<HomeScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.folder),
-              title: const Text('Documents'),
+              leading: Icon(Icons.folder_outlined,
+                  color: _selectedIndex == 1
+                      ? AppTheme.primaryColor
+                      : AppTheme.textSecondary),
+              title: Text('Documents',
+                  style: AppTheme.bodyMedium.copyWith(
+                      color: _selectedIndex == 1
+                          ? AppTheme.primaryColor
+                          : AppTheme.textPrimary)),
               selected: _selectedIndex == 1,
               onTap: () {
                 _onItemTapped(1);
                 Navigator.pop(context);
               },
             ),
-            const Divider(),
+            // <--- MỚI: Thêm tùy chọn Hồ sơ vào Drawer cho đồng bộ
             ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('Về ứng dụng'),
+              leading: Icon(Icons.person_outline,
+                  color: _selectedIndex == 2
+                      ? AppTheme.primaryColor
+                      : AppTheme.textSecondary),
+              title: Text('Hồ sơ cá nhân',
+                  style: AppTheme.bodyMedium.copyWith(
+                      color: _selectedIndex == 2
+                          ? AppTheme.primaryColor
+                          : AppTheme.textPrimary)),
+              selected: _selectedIndex == 2,
               onTap: () {
-                showAboutDialog(
-                  context: context,
-                  applicationName: 'RAG Chat',
-                  applicationVersion: '1.0.0',
-                  children: [
-                    const Text('Chat thông minh với tài liệu PDF sử dụng RAG'),
-                  ],
-                );
+                _onItemTapped(2);
+                Navigator.pop(context);
               },
             ),
+            const Divider(color: AppTheme.dividerColor),
             ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
+              leading: const Icon(Icons.logout, color: AppTheme.errorColor),
+              title: const Text('Đăng xuất',
+                  style: TextStyle(color: AppTheme.errorColor)),
               onTap: _logout,
             ),
           ],

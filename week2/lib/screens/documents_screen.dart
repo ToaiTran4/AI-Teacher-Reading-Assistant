@@ -5,10 +5,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import '../models/document_model.dart';
 import '../services/storage_service.dart';
-import '../config.dart';
 import '../services/rag_service.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/chat_controller.dart';
+import '../theme/app_theme.dart';
+import '../utils/app_limits.dart';
 import 'pdf_viewer_screen.dart';
 
 class DocumentsScreen extends StatefulWidget {
@@ -88,9 +89,26 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       if (fileBytes == null || fileBytes.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Không thể đọc file. Vui lòng thử lại.'),
-              backgroundColor: Colors.red,
+            SnackBar(
+              content: const Text('Không thể đọc file. Vui lòng thử lại.'),
+              backgroundColor: AppTheme.errorColor,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Kiểm tra giới hạn kích thước file (50MB)
+      if (!AppLimits.isValidFileSize(fileBytes.length)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'File quá lớn! Kích thước tối đa: ${AppLimits.maxFileSizeMB}MB. '
+                'File của bạn: ${AppLimits.formatFileSize(fileBytes.length)}',
+              ),
+              backgroundColor: AppTheme.errorColor,
+              duration: const Duration(seconds: 5),
             ),
           );
         }
@@ -154,7 +172,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi: $message'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -167,16 +185,31 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Xác nhận xóa'),
-        content: Text('Bạn có chắc muốn xóa "${document.fileName}"?'),
+        backgroundColor: AppTheme.surfaceColor,
+        title: Text(
+          'Xác nhận xóa',
+          style: AppTheme.h3,
+        ),
+        content: Text(
+          'Bạn có chắc muốn xóa "${document.fileName}"?',
+          style: AppTheme.bodyMedium,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy'),
+            child: Text(
+              'Hủy',
+              style: AppTheme.bodyMedium.copyWith(
+                color: AppTheme.textSecondary,
+              ),
+            ),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.errorColor,
+            ),
+            child: const Text('Xóa'),
           ),
         ],
       ),
@@ -197,7 +230,10 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       await _loadDocuments();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã xóa document')),
+          SnackBar(
+            content: const Text('Đã xóa document'),
+            backgroundColor: AppTheme.successColor,
+          ),
         );
       }
     } catch (e) {
@@ -206,7 +242,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi xóa: $message'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
           ),
         );
       }
@@ -226,6 +262,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         SnackBar(
           content: Text('Đã chọn: ${document.fileName}'),
           duration: const Duration(seconds: 1),
+          backgroundColor: AppTheme.successColor,
         ),
       );
     }
@@ -243,69 +280,170 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _documents.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.description, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text('Chưa có tài liệu nào'),
-                      SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(AppTheme.spacingLG),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.description_outlined,
+                          size: 64,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacingLG),
+                      Text(
+                        'Chưa có tài liệu nào',
+                        style: AppTheme.h3.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacingSM),
                       Text(
                         'Nhấn nút + để thêm PDF',
-                        style: TextStyle(color: Colors.grey),
+                        style: AppTheme.bodyMedium.copyWith(
+                          color: AppTheme.textHint,
+                        ),
                       ),
                     ],
                   ),
                 )
               : ListView.builder(
+                  padding: const EdgeInsets.all(AppTheme.spacingMD),
                   itemCount: _documents.length,
                   itemBuilder: (context, index) {
                     final doc = _documents[index];
                     final isSelected = selectedDoc?.id == doc.id;
 
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      color: isSelected ? Colors.blue.shade50 : null,
-                      child: ListTile(
-                        leading: Icon(
-                          Icons.picture_as_pdf,
-                          color: doc.isProcessed ? Colors.green : Colors.orange,
-                          size: 40,
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: AppTheme.spacingMD),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppTheme.primaryColor.withOpacity(0.15)
+                            : AppTheme.cardColor,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppTheme.primaryColor
+                              : AppTheme.dividerColor,
+                          width: isSelected ? 2 : 1,
                         ),
-                        title: Text(doc.fileName),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${(doc.fileSize / 1024).toStringAsFixed(1)} KB',
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                            Text(
-                              doc.isProcessed ? 'Đã xử lý' : 'Đang xử lý...',
-                              style: TextStyle(
-                                color: doc.isProcessed
-                                    ? Colors.green
-                                    : Colors.orange,
-                                fontSize: 12,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: ListTile(
+                        contentPadding:
+                            const EdgeInsets.all(AppTheme.spacingMD),
+                        leading: Container(
+                          padding: const EdgeInsets.all(AppTheme.spacingMD),
+                          decoration: BoxDecoration(
+                            color: doc.isProcessed
+                                ? AppTheme.successColor.withOpacity(0.2)
+                                : AppTheme.warningColor.withOpacity(0.2),
+                            borderRadius:
+                                BorderRadius.circular(AppTheme.radiusSM),
+                          ),
+                          child: Icon(
+                            Icons.picture_as_pdf,
+                            color: doc.isProcessed
+                                ? AppTheme.successColor
+                                : AppTheme.warningColor,
+                            size: 32,
+                          ),
+                        ),
+                        title: Text(
+                          doc.fileName,
+                          style: AppTheme.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Padding(
+                          padding:
+                              const EdgeInsets.only(top: AppTheme.spacingXS),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${(doc.fileSize / 1024).toStringAsFixed(1)} KB',
+                                style: AppTheme.caption,
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: AppTheme.spacingXS),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppTheme.spacingSM,
+                                  vertical: AppTheme.spacingXS,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: doc.isProcessed
+                                      ? AppTheme.successColor.withOpacity(0.2)
+                                      : AppTheme.warningColor.withOpacity(0.2),
+                                  borderRadius:
+                                      BorderRadius.circular(AppTheme.radiusSM),
+                                ),
+                                child: Text(
+                                  doc.isProcessed
+                                      ? 'Đã xử lý'
+                                      : 'Đang xử lý...',
+                                  style: AppTheme.caption.copyWith(
+                                    color: doc.isProcessed
+                                        ? AppTheme.successColor
+                                        : AppTheme.warningColor,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         trailing: PopupMenuButton(
-                          itemBuilder: (context) => const [
+                          iconColor: AppTheme.textSecondary,
+                          itemBuilder: (context) => [
                             PopupMenuItem(
                               value: 'select',
-                              child: Text('Chọn để chat'),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.chat_bubble_outline,
+                                    size: 20,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                  const SizedBox(width: AppTheme.spacingSM),
+                                  Text(
+                                    'Chọn để chat',
+                                    style: AppTheme.bodyMedium,
+                                  ),
+                                ],
+                              ),
                             ),
                             PopupMenuItem(
                               value: 'delete',
-                              child: Text(
-                                'Xóa',
-                                style: TextStyle(color: Colors.red),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete_outline,
+                                    size: 20,
+                                    color: AppTheme.errorColor,
+                                  ),
+                                  const SizedBox(width: AppTheme.spacingSM),
+                                  Text(
+                                    'Xóa',
+                                    style: AppTheme.bodyMedium.copyWith(
+                                      color: AppTheme.errorColor,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -332,14 +470,20 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                   },
                 ),
       floatingActionButton: _isProcessing
-          ? const FloatingActionButton(
+          ? FloatingActionButton(
               onPressed: null,
-              child: CircularProgressIndicator(color: Colors.white),
+              backgroundColor: AppTheme.primaryColor,
+              child: const CircularProgressIndicator(
+                color: AppTheme.textOnPrimary,
+                strokeWidth: 2,
+              ),
             )
-          : FloatingActionButton(
+          : FloatingActionButton.extended(
               onPressed: _pickAndUploadPDF,
               tooltip: 'Thêm PDF',
-              child: const Icon(Icons.add),
+              backgroundColor: AppTheme.primaryColor,
+              icon: const Icon(Icons.add),
+              label: const Text('Thêm PDF'),
             ),
     );
   }

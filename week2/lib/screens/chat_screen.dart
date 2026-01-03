@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../controllers/chat_controller.dart';
+import '../theme/app_theme.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -65,8 +66,9 @@ class _ChatScreenState extends State<ChatScreen> {
             if (selectedDoc != null)
               Text(
                 selectedDoc.fileName,
-                style: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.normal),
+                style: AppTheme.caption.copyWith(
+                  color: AppTheme.textSecondary,
+                ),
               ),
           ],
         ),
@@ -76,7 +78,41 @@ class _ChatScreenState extends State<ChatScreen> {
               icon: const Icon(Icons.delete_outline),
               tooltip: 'Xóa lịch sử chat',
               onPressed: () {
-                chatController.clearMessages();
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: AppTheme.surfaceColor,
+                    title: Text(
+                      'Xóa lịch sử',
+                      style: AppTheme.h3,
+                    ),
+                    content: Text(
+                      'Bạn có chắc muốn xóa toàn bộ lịch sử chat?',
+                      style: AppTheme.bodyMedium,
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(
+                          'Hủy',
+                          style: AppTheme.bodyMedium.copyWith(
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          chatController.clearMessages();
+                          Navigator.pop(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.errorColor,
+                        ),
+                        child: const Text('Xóa'),
+                      ),
+                    ],
+                  ),
+                );
               },
             ),
         ],
@@ -86,16 +122,37 @@ class _ChatScreenState extends State<ChatScreen> {
           if (selectedDoc == null)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              color: Colors.orange.shade100,
+              margin: const EdgeInsets.all(AppTheme.spacingMD),
+              padding: const EdgeInsets.all(AppTheme.spacingMD),
+              decoration: BoxDecoration(
+                color: AppTheme.warningColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                border: Border.all(
+                  color: AppTheme.warningColor.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.orange.shade900),
-                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.all(AppTheme.spacingXS),
+                    decoration: BoxDecoration(
+                      color: AppTheme.warningColor.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.info_outline,
+                      color: AppTheme.warningColor,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: AppTheme.spacingMD),
                   Expanded(
                     child: Text(
                       'Chưa chọn tài liệu. Vào mục Documents để chọn PDF',
-                      style: TextStyle(color: Colors.orange.shade900),
+                      style: AppTheme.bodyMedium.copyWith(
+                        color: AppTheme.warningColor,
+                      ),
                     ),
                   ),
                 ],
@@ -107,19 +164,25 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.chat_bubble_outline,
-                            size: 64, color: Colors.grey),
-                        const SizedBox(height: 16),
-                        const Text(
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 64,
+                          color: AppTheme.textHint,
+                        ),
+                        const SizedBox(height: AppTheme.spacingMD),
+                        Text(
                           'Bắt đầu trò chuyện',
-                          style: TextStyle(fontSize: 18, color: Colors.grey),
+                          style: AppTheme.h3.copyWith(
+                            color: AppTheme.textHint,
+                          ),
                         ),
                         if (selectedDoc != null) ...[
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppTheme.spacingSM),
                           Text(
                             'Hỏi về: ${selectedDoc.fileName}',
-                            style: const TextStyle(
-                                fontSize: 14, color: Colors.grey),
+                            style: AppTheme.bodyMedium.copyWith(
+                              color: AppTheme.textHint,
+                            ),
                           ),
                         ],
                       ],
@@ -127,57 +190,83 @@ class _ChatScreenState extends State<ChatScreen> {
                   )
                 : ListView.builder(
                     controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppTheme.spacingMD),
                     itemCount: chatController.messages.length,
                     itemBuilder: (context, index) {
                       final msg = chatController.messages[index];
                       final isUser = msg.role == "user";
 
-                      return Align(
-                        alignment: isUser
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: Container(
-                          constraints: BoxConstraints(
-                            maxWidth: MediaQuery.of(context).size.width * 0.75,
-                          ),
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isUser
-                                ? Colors.blue
-                                : (msg.content.startsWith('[ERROR]')
-                                    ? Colors.red.shade50
-                                    : Colors.grey.shade200),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                msg.content,
-                                style: TextStyle(
-                                  color: isUser
-                                      ? Colors.white
-                                      : (msg.content.startsWith('[ERROR]')
-                                          ? Colors.red.shade900
-                                          : Colors.black87),
-                                ),
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                        margin: EdgeInsets.only(
+                          bottom: AppTheme.spacingMD,
+                          left: isUser ? AppTheme.spacingLG : 0,
+                          right: isUser ? 0 : AppTheme.spacingLG,
+                        ),
+                        child: Align(
+                          alignment: isUser
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Container(
+                            constraints: BoxConstraints(
+                              maxWidth:
+                                  MediaQuery.of(context).size.width * 0.75,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: AppTheme.spacingMD,
+                                vertical: AppTheme.spacingMD),
+                            decoration: BoxDecoration(
+                              color: isUser
+                                  ? AppTheme.userMessageBg
+                                  : (msg.content.startsWith('[ERROR]')
+                                      ? AppTheme.errorColor.withOpacity(0.15)
+                                      : AppTheme.botMessageBg),
+                              borderRadius: BorderRadius.only(
+                                topLeft:
+                                    const Radius.circular(AppTheme.radiusLG),
+                                topRight:
+                                    const Radius.circular(AppTheme.radiusLG),
+                                bottomLeft: Radius.circular(isUser
+                                    ? AppTheme.radiusLG
+                                    : AppTheme.radiusSM),
+                                bottomRight: Radius.circular(isUser
+                                    ? AppTheme.radiusSM
+                                    : AppTheme.radiusLG),
                               ),
-                              if (!isUser && msg.documentContext != null) ...[
-                                const SizedBox(height: 8),
-                                const Divider(),
-                                const Text(
-                                  'Nguồn từ PDF',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey,
-                                    fontStyle: FontStyle.italic,
-                                  ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
-                            ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  msg.content,
+                                  style: AppTheme.bodyMedium.copyWith(
+                                    color: isUser
+                                        ? AppTheme.userMessageText
+                                        : (msg.content.startsWith('[ERROR]')
+                                            ? AppTheme.errorColor
+                                            : AppTheme.botMessageText),
+                                  ),
+                                ),
+                                if (!isUser && msg.documentContext != null) ...[
+                                  const SizedBox(height: AppTheme.spacingSM),
+                                  const Divider(),
+                                  Text(
+                                    'Nguồn từ PDF',
+                                    style: AppTheme.caption.copyWith(
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -185,58 +274,103 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
           ),
           if (chatController.isTyping)
-            const Padding(
-              padding: EdgeInsets.all(12),
+            Padding(
+              padding: const EdgeInsets.all(AppTheme.spacingMD),
               child: Row(
                 children: [
-                  SizedBox(
+                  const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
-                  SizedBox(width: 12),
-                  Text('Đang trả lời...', style: TextStyle(color: Colors.grey)),
+                  const SizedBox(width: AppTheme.spacingMD),
+                  Text(
+                    'Đang trả lời...',
+                    style: AppTheme.bodyMedium.copyWith(
+                      color: AppTheme.textHint,
+                    ),
+                  ),
                 ],
               ),
             ),
           Container(
-            padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppTheme.spacingMD,
+              vertical: AppTheme.spacingMD,
+            ),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 4,
-                  offset: Offset(0, -2),
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
                 ),
               ],
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _inputController,
-                    decoration: InputDecoration(
-                      hintText: 'Nhập câu hỏi...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
+            child: SafeArea(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppTheme.cardColor,
+                        borderRadius:
+                            BorderRadius.circular(AppTheme.radiusRound),
+                        border: Border.all(
+                          color: AppTheme.dividerColor,
+                          width: 1,
+                        ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 10),
+                      child: TextField(
+                        controller: _inputController,
+                        decoration: InputDecoration(
+                          hintText: 'Nhập câu hỏi...',
+                          hintStyle: AppTheme.bodyMedium.copyWith(
+                            color: AppTheme.textHint,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: AppTheme.spacingLG,
+                              vertical: AppTheme.spacingMD),
+                        ),
+                        style: AppTheme.bodyMedium,
+                        maxLines: null,
+                        onSubmitted: (_) => _sendMessage(),
+                      ),
                     ),
-                    maxLines: null,
-                    onSubmitted: (_) => _sendMessage(),
                   ),
-                ),
-                const SizedBox(width: 8),
-                CircleAvatar(
-                  radius: 24,
-                  child: IconButton(
-                    icon: const Icon(Icons.send),
-                    onPressed: chatController.isTyping ? null : _sendMessage,
+                  const SizedBox(width: AppTheme.spacingMD),
+                  Material(
+                    color: AppTheme.primaryColor,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusRound),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusRound),
+                      onTap: chatController.isTyping ? null : _sendMessage,
+                      child: Container(
+                        width: 48,
+                        height: 48,
+                        alignment: Alignment.center,
+                        child: chatController.isTyping
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      AppTheme.textOnPrimary),
+                                ),
+                              )
+                            : const Icon(
+                                Icons.send,
+                                color: AppTheme.textOnPrimary,
+                                size: 20,
+                              ),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],

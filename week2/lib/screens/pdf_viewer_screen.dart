@@ -12,6 +12,10 @@ import '../models/document_model.dart';
 import '../models/quiz_model.dart'; // Đảm bảo đã cập nhật file này
 import '../services/storage_service.dart';
 import '../controllers/chat_controller.dart';
+import '../controllers/auth_controller.dart';
+import '../utils/chapter_detector.dart';
+import '../utils/app_limits.dart';
+import '../theme/app_theme.dart';
 import 'quiz_screen.dart';
 
 class PdfViewerScreen extends StatefulWidget {
@@ -48,6 +52,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   final int _timeThreshold = 45;
 
   int _lastSummarizedPage = 0;
+  List<ChapterInfo> _detectedChapters = [];
+  bool _isDetectingChapters = false;
 
   String get _prefsKey => 'pdf_last_page_${widget.document.id}';
   // [MỚI] Key để lưu lịch sử quiz cho tài liệu này
@@ -89,6 +95,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         _isLoading = false;
       });
 
+      // Tự động phát hiện chương/bài khi load PDF
+      _detectChapters();
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (savedPage > 1) {
           _pdfController.jumpToPage(savedPage);
@@ -102,6 +111,209 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             content: Text('Không thể mở PDF: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  /// Phát hiện chương/bài trong PDF (chạy nền, không block UI)
+  Future<void> _detectChapters() async {
+    if (_extractedPdfDocument == null) return;
+
+    setState(() => _isDetectingChapters = true);
+
+    try {
+      // Chạy trong isolate để không block UI
+      final chapters = await Future(() {
+        return ChapterDetector.detectChapters(_extractedPdfDocument!);
+      });
+
+      if (mounted) {
+        setState(() {
+          _detectedChapters = chapters;
+          _isDetectingChapters = false;
+        });
+
+        if (chapters.isNotEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Đã phát hiện ${chapters.length} chương/bài'),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isDetectingChapters = false);
+      }
+      debugPrint('Lỗi phát hiện chương: $e');
+    }
+  }
+
+  /// Tóm tắt theo chương (tự động detect ranh giới và tóm tắt tất cả mục)
+  Future<void> _summarizeChapter(int chapterIndex) async {
+    if (_detectedChapters.isEmpty ||
+        chapterIndex < 0 ||
+        chapterIndex >= _detectedChapters.length) {
+      return;
+    }
+
+    final chapter = _detectedChapters[chapterIndex];
+    final startPage = chapter.pageNumber;
+
+    // Tìm trang kết thúc của chương (trang bắt đầu của chương tiếp theo - 1)
+    int endPage = _totalPages;
+    if (chapterIndex + 1 < _detectedChapters.length) {
+      endPage = _detectedChapters[chapterIndex + 1].pageNumber - 1;
+    }
+
+    // Nếu chương có các mục, tóm tắt từng mục rồi tổng hợp
+    if (chapter.sections.isNotEmpty) {
+      await _summarizeChapterWithSections(chapter, startPage, endPage);
+    } else {
+      // Không có mục, tóm tắt toàn bộ chương
+      await _summarizeRange(endPage,
+          startPage: startPage, chapterTitle: chapter.title);
+    }
+  }
+
+  /// Tóm tắt chương có nhiều mục - tóm tắt từng mục rồi tổng hợp
+  Future<void> _summarizeChapterWithSections(
+    ChapterInfo chapter,
+    int startPage,
+    int endPage,
+  ) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 16),
+            Text('Đang tóm tắt chương "${chapter.title}"...'),
+            const SizedBox(height: 8),
+            Text(
+              'Chương có ${chapter.sections.length} mục',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final chatController = context.read<ChatController>();
+      final sectionSummaries = <String>[];
+
+      // Tóm tắt từng mục trong chương
+      for (int i = 0; i < chapter.sections.length; i++) {
+        final section = chapter.sections[i];
+        final sectionStartPage = section.pageNumber;
+
+        // Tìm trang kết thúc của mục (trang bắt đầu của mục tiếp theo - 1, hoặc chương tiếp theo)
+        int sectionEndPage = endPage;
+        if (i + 1 < chapter.sections.length) {
+          sectionEndPage = chapter.sections[i + 1].pageNumber - 1;
+        } else if (chapter.sections.length > 0) {
+          // Mục cuối cùng của chương
+          final nextChapterIndex = _detectedChapters.indexOf(chapter) + 1;
+          if (nextChapterIndex < _detectedChapters.length) {
+            sectionEndPage = _detectedChapters[nextChapterIndex].pageNumber - 1;
+          }
+        }
+
+        // Tóm tắt mục này
+        final sectionText = _getCombinedText(sectionStartPage, sectionEndPage);
+        if (sectionText.trim().isNotEmpty) {
+          final sectionPrompt =
+              'Tóm tắt ngắn gọn mục "${section.title}" trong 2-3 câu:\n\n$sectionText';
+
+          String sectionSummary = '';
+          await for (final chunk
+              in chatController.chatService.sendMessage(sectionPrompt)) {
+            sectionSummary += chunk;
+          }
+
+          if (sectionSummary.isNotEmpty &&
+              !sectionSummary.startsWith('[ERROR]')) {
+            sectionSummaries.add('• ${section.title}: $sectionSummary');
+          }
+        }
+      }
+
+      // Tóm tắt toàn bộ chương dựa trên các mục đã tóm tắt
+      final allSectionsText = _getCombinedText(startPage, endPage);
+      final sectionsSummary = sectionSummaries.join('\n\n');
+
+      final chapterPrompt = '''
+Tóm tắt ngắn gọn chương "${chapter.title}" trong 3 gạch đầu dòng.
+
+Chương này có ${chapter.sections.length} mục với tóm tắt như sau:
+$sectionsSummary
+
+Nội dung đầy đủ của chương:
+$allSectionsText
+
+Hãy tổng hợp lại thành tóm tắt chương hoàn chỉnh.
+''';
+
+      String fullAnswer = '';
+      await for (final chunk
+          in chatController.chatService.sendMessage(chapterPrompt)) {
+        fullAnswer += chunk;
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      setState(() {
+        _lastSummarizedPage = endPage;
+      });
+
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('Tóm tắt: ${chapter.title}'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (chapter.sections.isNotEmpty) ...[
+                  Text(
+                    'Chương có ${chapter.sections.length} mục:',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  ...chapter.sections.map((s) => Padding(
+                        padding: const EdgeInsets.only(left: 8, bottom: 4),
+                        child: Text('• ${s.title} (Trang ${s.pageNumber})',
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.grey)),
+                      )),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                ],
+                Text(fullAnswer),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Đóng'),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: $e')),
       );
     }
   }
@@ -226,10 +438,11 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     return combinedText;
   }
 
-  Future<void> _summarizeRange(int endPage) async {
+  Future<void> _summarizeRange(int endPage,
+      {int? startPage, String? chapterTitle}) async {
     if (_extractedPdfDocument == null) return;
-    int startPage = _lastSummarizedPage + 1;
-    if (startPage > endPage) startPage = endPage;
+    int actualStartPage = startPage ?? (_lastSummarizedPage + 1);
+    if (actualStartPage > endPage) actualStartPage = endPage;
 
     showDialog(
       context: context,
@@ -238,7 +451,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     );
 
     try {
-      String combinedText = _getCombinedText(startPage, endPage);
+      String combinedText = _getCombinedText(actualStartPage, endPage);
       if (combinedText.trim().isEmpty) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -246,8 +459,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         return;
       }
 
+      final rangeText = chapterTitle != null
+          ? 'chương "$chapterTitle" (trang $actualStartPage - $endPage)'
+          : 'trang $actualStartPage đến trang $endPage';
+
       final prompt =
-          'Tóm tắt ngắn gọn nội dung từ trang $startPage đến trang $endPage trong 3 gạch đầu dòng:\n\n$combinedText';
+          'Tóm tắt ngắn gọn nội dung $rangeText trong 3 gạch đầu dòng:\n\n$combinedText';
       final chatController = context.read<ChatController>();
       final stream = chatController.chatService.sendMessage(prompt);
 
@@ -263,10 +480,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         _lastSummarizedPage = endPage;
       });
 
+      final title = chapterTitle ?? 'Trang $actualStartPage - $endPage';
+
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text('Tóm tắt trang $startPage - $endPage'),
+          title: Text('Tóm tắt: $title'),
           content: SingleChildScrollView(child: Text(fullAnswer)),
           actions: [
             TextButton(
@@ -287,6 +506,30 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     int startPage = _lastSummarizedPage + 1;
     if (startPage > endPage) startPage = endPage;
 
+    // Kiểm tra giới hạn số câu hỏi/ngày
+    final authController = context.read<AuthController>();
+    final userId = authController.currentUser?.uid;
+
+    if (userId != null) {
+      final canCreate = await AppLimits.canCreateQuestion(userId);
+      if (!canCreate) {
+        final todayCount = await AppLimits.getTodayQuestionCount(userId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Đã đạt giới hạn ${AppLimits.maxQuestionsPerDay} câu hỏi/ngày. '
+                'Bạn đã tạo $todayCount câu hỏi hôm nay. Vui lòng thử lại vào ngày mai.',
+              ),
+              backgroundColor: AppTheme.errorColor,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+        return;
+      }
+    }
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -304,6 +547,11 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 
       final chatController = context.read<ChatController>();
       final questions = await chatController.generateQuizFromText(combinedText);
+
+      // Tăng số câu hỏi đã tạo (mỗi quiz có 5 câu, nên tăng 1 lần)
+      if (userId != null && questions.isNotEmpty) {
+        await AppLimits.incrementQuestionCount(userId);
+      }
 
       if (!mounted) return;
       Navigator.pop(context);
@@ -390,6 +638,67 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
           IconButton(
               icon: const Icon(Icons.zoom_in),
               onPressed: _pdfBytes == null ? null : _zoomIn),
+          // Button để xem danh sách chương và tóm tắt
+          if (_isDetectingChapters)
+            const Padding(
+              padding: EdgeInsets.all(8.0),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else if (_detectedChapters.isNotEmpty)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.menu_book),
+              tooltip: 'Danh sách chương',
+              onSelected: (value) {
+                if (value.startsWith('summarize_')) {
+                  final index = int.parse(value.split('_')[1]);
+                  _summarizeChapter(index);
+                } else if (value.startsWith('goto_')) {
+                  final page = int.parse(value.split('_')[1]);
+                  _pdfController.jumpToPage(page);
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'header',
+                  enabled: false,
+                  child: Text(
+                    'Danh sách chương',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const PopupMenuDivider(),
+                ..._detectedChapters.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final chapter = entry.value;
+                  return PopupMenuItem(
+                    value: 'goto_${chapter.pageNumber}',
+                    child: ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        chapter.title,
+                        style: const TextStyle(fontSize: 14),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        'Trang ${chapter.pageNumber}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.summarize, size: 18),
+                        tooltip: 'Tóm tắt chương này',
+                        onPressed: () => _summarizeChapter(index),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(4.0),
@@ -464,8 +773,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                                       child: OutlinedButton.icon(
                                         style: OutlinedButton.styleFrom(
                                           side: const BorderSide(
-                                              color: Colors.yellowAccent),
-                                          foregroundColor: Colors.yellowAccent,
+                                              color: Color.fromARGB(
+                                                  255, 0, 238, 255)),
+                                          foregroundColor: const Color.fromARGB(
+                                              255, 255, 179, 0),
                                           padding: const EdgeInsets.symmetric(
                                               vertical: 12),
                                         ),
