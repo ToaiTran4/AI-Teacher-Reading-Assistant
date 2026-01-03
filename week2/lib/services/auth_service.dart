@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:mongo_dart/mongo_dart.dart';
 import 'package:uuid/uuid.dart';
 import '../models/user_model.dart';
+import '../config.dart';
 
 /// Universal Auth Service
 /// - Web: Dùng REST API
@@ -21,8 +22,10 @@ class AuthService {
   bool _isInitialized = false;
 
   AuthService({
-    this.apiUrl = 'http://localhost:3000/api',
-    this.mongoUri = 'mongodb://localhost:27017/Teachain',  });
+    String? apiUrl,
+    String? mongoUri,
+  }) : apiUrl = apiUrl ?? AppConfig.getApiUrl(),
+       mongoUri = mongoUri ?? AppConfig.getMongoUri();
 
   Future<void> init() async {
     if (_isInitialized) return;

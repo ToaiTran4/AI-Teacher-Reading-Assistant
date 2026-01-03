@@ -8,12 +8,12 @@ import 'services/rag_service.dart';
 import 'services/qdrant_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'config.dart';
 
 // ===== CẤU HÌNH =====
 // Thay bằng API key của Google Gemini (Generative Language API).
 // Ví dụ: const String geminiApiKey = "AIza...";
 const String geminiApiKey = "";
-const String qdrantUrl = "http://localhost:6333";
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,11 +28,14 @@ class MyApp extends StatelessWidget {
     // Chat dùng Google Gemini
     final chatService = ChatService(apiKey: geminiApiKey);
 
-    // Qdrant local
-    final qdrantService = QdrantService(baseUrl: qdrantUrl, apiKey: null);
+    // Qdrant local (tự động detect platform)
+    final qdrantService = QdrantService(
+      baseUrl: AppConfig.getQdrantUrl(),
+      apiKey: null,
+    );
 
-    // Ollama service (chỉ dùng cho embedding)
-    final ollamaService = OllamaService();
+    // Ollama service (chỉ dùng cho embedding, tự động detect platform)
+    final ollamaService = OllamaService(baseUrl: AppConfig.getOllamaUrl());
 
     // RAG dùng Ollama embedding
     final ragService = RAGService(

@@ -34,10 +34,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
   }
 
   Future<void> _initServicesAndLoad() async {
-    _storageService = StorageService(
-      mongoUri: AppConfig.mongoUri,
-      apiUrl: 'http://localhost:3000/api',
-    );
+    _storageService = StorageService();
     await _storageService.init();
     await _loadDocuments();
   }
